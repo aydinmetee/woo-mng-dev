@@ -26,7 +26,7 @@ class MngSettings {
         ?>
         <div class="wrap">
             <h1>MNG Kargo API Ayarları</h1>
-            <p>MNG Kargo entegrasyonu için gerekli kimlik bilgilerini aşağıya giriniz.</p>
+            <p>MNG Kargo entegrasyonu için gerekli kimlik bilgilerini ve çalışma ortamını aşağıdan seçiniz.</p>
             <form method="post" action="options.php">
                 <?php
                 settings_fields('mng_kargo_option_group');
@@ -47,9 +47,17 @@ class MngSettings {
 
         add_settings_section(
             'setting_section_id', 
-            'API Kimlik Bilgileri', 
+            'Genel Ayarlar ve Kimlik Bilgileri', 
             null, 
             'mng-kargo-settings-admin'
+        );
+
+        add_settings_field(
+            'environment', 
+            'Ortam Seçimi', 
+            [$this, 'environmentCallback'], 
+            'mng-kargo-settings-admin', 
+            'setting_section_id'
         );
 
         add_settings_field(
@@ -88,7 +96,9 @@ class MngSettings {
     public function sanitize($input) {
         $new_input = array();
         
-        // URL sanitize işlemini de kaldırdık
+        if(isset($input['environment']))
+            $new_input['environment'] = sanitize_text_field($input['environment']);
+
         if(isset($input['username']))
             $new_input['username'] = sanitize_text_field($input['username']);
         if(isset($input['password']))
@@ -101,7 +111,16 @@ class MngSettings {
         return $new_input;
     }
 
-    // URL Callback fonksiyonunu sildik.
+    public function environmentCallback() {
+        $val = isset($this->options['environment']) ? $this->options['environment'] : 'test';
+        ?>
+        <select name="mng_kargo_option_name[environment]" style="width: 300px;">
+            <option value="test" <?php selected($val, 'test'); ?>>Test Ortamı (testapi.mngkargo.com.tr)</option>
+            <option value="production" <?php selected($val, 'production'); ?>>Canlı Ortam (api.mngkargo.com.tr)</option>
+        </select>
+        <p class="description"><strong>Dikkat:</strong> Test ve Canlı ortam kullanıcı bilgileri (Şifre, Client ID vb.) farklıdır. Ortam değiştirdiğinizde bilgileri güncellemeyi unutmayın.</p>
+        <?php
+    }
 
     public function usernameCallback() {
         printf(

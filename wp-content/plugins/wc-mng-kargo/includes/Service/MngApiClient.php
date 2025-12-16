@@ -5,12 +5,12 @@ use Exception;
 
 class MngApiClient {
     
-    private const AUTH_URL = 'https://api.mngkargo.com.tr/mngapi/api'; 
-    //private const AUTH_URL = 'https://testapi.mngkargo.com.tr/mngapi/api'; 
+    private const TEST_HOST = 'https://testapi.mngkargo.com.tr';
+    private const PROD_HOST = 'https://api.mngkargo.com.tr';
     
-    private const CMD_URL = 'https://api.mngkargo.com.tr/mngapi/api/standardcmdapi';
-    //private const CMD_URL = 'https://testapi.mngkargo.com.tr/mngapi/api/standardcmdapi';
+    private const API_PATH  = '/mngapi/api';
 
+    private string $baseUrl; 
     private string $username;     
     private string $password;     
     private string $clientId;     
@@ -24,6 +24,14 @@ class MngApiClient {
         $this->clientId     = $options['client_id'] ?? '';
         $this->clientSecret = $options['client_secret'] ?? '';
 
+        $environment = $options['environment'] ?? 'test'; 
+
+        if ($environment === 'production') {
+            $this->baseUrl = self::PROD_HOST . self::API_PATH;
+        } else {
+            $this->baseUrl = self::TEST_HOST . self::API_PATH;
+        }
+
         if (empty($this->username) || empty($this->clientId)) {
             throw new Exception('API ayarları eksik! Lütfen MNG Kargo Ayarlarını kontrol edin.');
         }
@@ -31,12 +39,12 @@ class MngApiClient {
 
     /**
      * Siparişi MNG Kargo'ya iletir.
-     * Endpoint: /createOrder
+     * Dinamik URL yapısını kullanır.
      */
     public function createShipment(array $payload): array {
         $jwtToken = $this->loginAndGetToken();
 
-        $url = self::CMD_URL . '/createOrder';
+        $url = $this->baseUrl . '/standardcmdapi/createOrder';
 
         $headers = [
             'Authorization'       => 'Bearer ' . $jwtToken,
@@ -85,7 +93,7 @@ class MngApiClient {
      * Token Alma (Identity API)
      */
     private function loginAndGetToken(): string {
-        $url = self::AUTH_URL . '/token';
+        $url = $this->baseUrl . '/token';
 
         $body = [
             'customerNumber' => $this->username,
@@ -114,7 +122,8 @@ class MngApiClient {
         $data = json_decode($bodyResponse, true);
 
         if (empty($data['jwt'])) {
-            throw new Exception('JWT Token alınamadı. Kullanıcı bilgilerinizi kontrol edin.');
+            $msg = $data['message'] ?? $data['detail'] ?? 'Bilinmeyen Hata';
+            throw new Exception('JWT Token alınamadı: ' . $msg);
         }
 
         return $data['jwt'];
