@@ -52,9 +52,6 @@ class MngSettings {
             'mng-kargo-settings-admin'
         );
 
-        // API URL alanını kaldırdık. 
-        // Sadece Kullanıcı Adı, Şifre, Client ID ve Secret kaldı.
-
         add_settings_field(
             'username', 
             'Kullanıcı Adı (Müşteri No)', 

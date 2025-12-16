@@ -5,13 +5,11 @@ use Exception;
 
 class MngApiClient {
     
-    // Identity API Base URL (Token için)
-    //private const AUTH_URL = 'https://api.mngkargo.com.tr/mngapi/api'; 
-    private const AUTH_URL = 'https://testapi.mngkargo.com.tr/mngapi/api'; 
+    private const AUTH_URL = 'https://api.mngkargo.com.tr/mngapi/api'; 
+    //private const AUTH_URL = 'https://testapi.mngkargo.com.tr/mngapi/api'; 
     
-    // Standard Command API Base URL (Sipariş için)
-    //private const CMD_URL = 'https://api.mngkargo.com.tr/mngapi/api/standardcmdapi';
-    private const CMD_URL = 'https://testapi.mngkargo.com.tr/mngapi/api/standardcmdapi';
+    private const CMD_URL = 'https://api.mngkargo.com.tr/mngapi/api/standardcmdapi';
+    //private const CMD_URL = 'https://testapi.mngkargo.com.tr/mngapi/api/standardcmdapi';
 
     private string $username;     
     private string $password;     
@@ -35,24 +33,22 @@ class MngApiClient {
      * Siparişi MNG Kargo'ya iletir.
      * Endpoint: /createOrder
      */
-    public function createShipment(array $payload): string {
-        // 1. Token Al
+    public function createShipment(array $payload): array {
         $jwtToken = $this->loginAndGetToken();
 
-        // 2. Siparişi Oluştur
         $url = self::CMD_URL . '/createOrder';
 
         $headers = [
             'Authorization'       => 'Bearer ' . $jwtToken,
             'Content-Type'        => 'application/json',
-            'X-IBM-Client-Id'     => $this->clientId,    // Header bilgisi
+            'X-IBM-Client-Id'     => $this->clientId,
             'X-IBM-Client-Secret' => $this->clientSecret,
             'x-api-version'       => '1.0'
         ];
         
         $response = wp_remote_post($url, [
             'headers' => $headers,
-            'body'    => json_encode($payload), // Mapper'dan gelen yapıyı direkt gönderiyoruz
+            'body'    => json_encode($payload),
             'timeout' => 45
         ]);
 
@@ -64,17 +60,17 @@ class MngApiClient {
         $body     = wp_remote_retrieve_body($response);
         $data     = json_decode($body, true);
 
-        // Başarılı işlem (200 OK)
-        if ($httpCode === 200) {
-            // Yanıt şemasında orderInvoiceId veya referenceId döner
-            if (!empty($data['orderInvoiceId'])) {
-                 return $data['orderInvoiceId'];
-            } elseif (!empty($data['referenceId'])) {
-                 return $data['referenceId'];
-            }
+        if (is_array($data) && isset($data[0]) && is_array($data[0])) {
+            $data = $data[0];
         }
 
-        // Hata Durumu Analizi
+        if ($httpCode === 200) {
+            return [
+                'barcode'     => $data['orderInvoiceId'] ?? $data['referenceId'] ?? 'YOK',
+                'referenceId' => $data['referenceId'] ?? 'YOK'
+            ];
+        }
+
         $errorMsg = 'API Hatası';
         if (isset($data['message'])) {
             $errorMsg = $data['message'];
@@ -82,7 +78,6 @@ class MngApiClient {
             $errorMsg = $data['detail'];
         }
         
-        // MNG bazen 400 döner ve hatayı body içinde verir
         throw new Exception("MNG Sipariş Oluşturulamadı ($httpCode): $errorMsg");
     }
 
